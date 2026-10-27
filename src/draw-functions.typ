@@ -183,6 +183,32 @@
 }
 
 
+// Triangular meter: an isosceles triangle with its apex pointing towards the 
+// incoming wire and an optional label next to its base. The triangle is the 
+// smallest one whose legs touch the left corners of the label box, enlarged 
+// to at least `min-height`. 
+#let draw-trimeter(gate, draw-params) = {
+  let (apex-angle, inner-sep, min-height) = gate.data
+  let stroke = utility.update-stroke(draw-params.wire, gate.stroke)
+  let fill = utility.if-auto(gate.fill, draw-params.background)
+  let min-height = utility.if-auto(min-height, draw-params.x-gate-size.height)
+
+  let body = box(inset: inner-sep, if gate.content == none { [] } else { gate.content })
+  let (width: w, height: h) = measure(body)
+  let t = calc.tan(apex-angle / 2)
+
+  let height = calc.max(h + 2 * w * t, min-height)
+  let length = height / (2 * t)
+
+  box(width: length, height: height, {
+    place(polygon(
+      fill: fill, stroke: stroke,
+      (0pt, height / 2), (length, 0pt), (length, height),
+    ))
+    place(dx: length - w, dy: (height - h) / 2, body)
+  })
+}
+
 // Ground symbol: three vertical bars of decreasing height. The wire ends at 
 // the centre of the cell, so the first (largest) bar is put there. 
 #let draw-ground(gate, draw-params) = {

@@ -1,6 +1,6 @@
 #import "utility.typ"
 #import "decorations.typ": lstick, rstick, midstick, nwire, annotate, slice, setwire, gategroup, repeat-block, break-line
-#import "gates.typ": gate, mqgate, ctrl, swap, targ, targ-y, meter, phantom, permute, phase, ground, draw-functions
+#import "gates.typ": gate, mqgate, ctrl, swap, targ, targ-y, meter, phantom, permute, phase, ground, trimeter, draw-functions
 #import draw-functions: meter-symbol
 #import "quantum-circuit.typ": quantum-circuit
 #import "tequila.typ"

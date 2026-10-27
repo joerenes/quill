@@ -470,6 +470,66 @@
 
 
 
+/// Triangular measurement symbol: an isosceles triangle pointing towards the 
+/// incoming wire, with an optional label next to its base. 
+/// 
+/// ```example
+/// #quantum-circuit(
+///   1, trimeter(), setwire(2), 1, [\ ],
+///   1, trimeter($Z$), setwire(2), 1, [\ ],
+///   1, trimeter($X$, min-height: 0pt), setwire(2), 1
+/// )
+/// ```
+#let trimeter(
+
+  /// Optional label. 
+  /// -> none | content
+  ..body,
+
+  /// Opening angle of the apex. 
+  /// -> angle
+  apex-angle: 50deg,
+
+  /// Padding around the label. 
+  /// -> length
+  inner-sep: 1pt,
+
+  /// Minimum height of the triangle. With `auto`, the height of an $X$ gate 
+  /// is used. Pass `0pt` for a triangle that just fits the label. 
+  /// -> auto | length
+  min-height: auto,
+
+  /// Fill of the triangle; defaults to the circuit background. 
+  /// -> auto | none | color
+  fill: auto,
+
+  /// Stroke of the triangle; defaults to the wire stroke. 
+  /// -> auto | stroke
+  stroke: auto,
+
+  /// One or more labels to add to the gate. See @gate.label. 
+  /// -> none | array | str | content | dictionary
+  label: none,
+
+  x: auto,
+
+  y: auto,
+
+) = {
+  process-args.assert-no-named(body, fn: "trimeter")
+  body = body.pos()
+  assert(body.len() <= 1, message: "Unexpected positional argument `" + repr(body.at(1, default: none)) + "` encountered at trimeter")
+  gate(
+    body.at(0, default: none), 
+    x: x, y: y, 
+    fill: fill,
+    stroke: stroke,
+    label: label,
+    draw-function: draw-functions.draw-trimeter,
+    data: (apex-angle: apex-angle, inner-sep: inner-sep, min-height: min-height),
+  )
+}
+
 /// Ground symbol for discarding a qubit. The incoming wire ends at the 
 /// first (largest) bar. To remove the wire after the symbol, follow it 
 /// with `setwire(0)` (`tequila.ground` does this automatically). 

@@ -245,6 +245,12 @@
   qubit, gates.gate.with($U (#theta, #phi, #lambda)$, ..args)
 )
 
+// Triangular measurement. The measured wire becomes `output-wire` wires 
+// (classical by default) after the symbol; pass `none` to leave it as is. 
+#let trimeter(qubit, output-wire: 2, ..args) = construct-single-qubit-gate(
+  qubit, gates.trimeter.with(..args), wire-after: output-wire
+)
+
 // Ground (discard). The wire ends at the symbol. 
 #let ground(qubit, ..args) = construct-single-qubit-gate(
   qubit, gates.ground.with(..args), wire-after: 0
