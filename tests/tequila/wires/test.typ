@@ -16,3 +16,10 @@
   tq.rstick(1, $d$),
   tq.measure(2),
 ))
+
+#pagebreak()
+
+// lstick/rstick on several qubits at once
+#quill.quantum-circuit(..tq.build(
+  tq.lstick(range(3), $q$), tq.h(1), tq.rstick((0, 2), $r$),
+))

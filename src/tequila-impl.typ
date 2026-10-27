@@ -292,16 +292,23 @@
 
 // Label at the start of a wire (see `quill.lstick`). There is no wire left 
 // of the label (`input-wire`) and `output-wire` wires right of it. 
-#let lstick(qubit, body, n: 1, input-wire: 0, output-wire: 1, ..args) = gate-info(
-  qubit, decorations.lstick.with(body, n: n, ..args), n: n, 
-  wire-changes: wire-change(range(qubit, qubit + n), before: input-wire, after: output-wire)
-)
+#let lstick(qubit, body, n: 1, input-wire: 0, output-wire: 1, ..args) = {
+  let info(qubit) = gate-info(
+    qubit, decorations.lstick.with(body, n: n, ..args), n: n, 
+    wire-changes: wire-change(range(qubit, qubit + n), before: input-wire, after: output-wire)
+  )
+  if type(qubit) == int { info(qubit) } else { qubit.map(info).flatten() }
+}
 
 // Label at the end of a wire (see `quill.rstick`). The wire ends at the 
 // label (`output-wire`). 
-#let rstick(qubit, body, n: 1, output-wire: 0, ..args) = gate-info(
-  qubit, decorations.rstick.with(body, n: n, ..args), n: n, 
-  wire-changes: wire-change(range(qubit, qubit + n), after: output-wire)
+#let rstick(qubit, body, n: 1, output-wire: 0, ..args) = {
+  let info(qubit) = gate-info(
+    qubit, decorations.rstick.with(body, n: n, ..args), n: n, 
+    wire-changes: wire-change(range(qubit, qubit + n), after: output-wire)
+  )
+  if type(qubit) == int { info(qubit) } else { qubit.map(info).flatten() }
+}
 )
 
 
