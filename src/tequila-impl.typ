@@ -1,4 +1,5 @@
 #import "gates.typ"
+#import "decorations.typ"
 #import "utility.typ": if-auto
 
 /// Info about one single quantum gate. 
@@ -22,14 +23,45 @@
   ///  -> array
   supplements: (), 
 
+  /// Wire changes caused by this gate, given as dictionaries 
+  /// `(qubit: int, before: none | int, after: none | int)`. `after` sets 
+  /// the wire count of `qubit` from the gate on, `before` sets it for 
+  /// everything left of the gate. See `wire-change()`. 
+  /// -> array
+  wire-changes: (),
+
 ) = (
   (
     qubit: qubit,
     n: n,
     supplements: supplements,
     constructor: constructor,
+    wire-changes: wire-changes,
   ),
 )
+
+
+/// Creates the wire changes of a gate acting on the given qubits. Returns 
+/// an empty array if neither `before` nor `after` is set. 
+#let wire-change(
+  
+  /// One or more qubits. 
+  /// -> int | array
+  qubits, 
+
+  /// Wire count left of the gate. 
+  /// -> none | int
+  before: none, 
+
+  /// Wire count from the gate on. 
+  /// -> none | int
+  after: none
+
+) = {
+  if before == none and after == none { return () }
+  if type(qubits) == int { qubits = (qubits,) }
+  qubits.map(q => (qubit: q, before: before, after: after))
+}
 
 
 
@@ -41,7 +73,15 @@
 
   /// Gate function.
   /// -> function
-  gate
+  gate,
+
+  /// Wire count left of the gate, see `wire-change()`. 
+  /// -> none | int
+  wire-before: none, 
+
+  /// Wire count from the gate on, see `wire-change()`. 
+  /// -> none | int
+  wire-after: none,
   
 ) = {
 
@@ -56,8 +96,12 @@
   }
 
   if qubit.len() == 1 { qubit = qubit.first() }
-  if type(qubit) == int { return gate-info(qubit, gate) }
-  qubit.map(qubit => gate-info(qubit, gate))
+  let info(qubit) = gate-info(
+    qubit, gate, 
+    wire-changes: wire-change(qubit, before: wire-before, after: wire-after)
+  )
+  if type(qubit) == int { return info(qubit) }
+  qubit.map(info)
 }
 
 
@@ -201,9 +245,16 @@
   qubit, gates.gate.with($U (#theta, #phi, #lambda)$, ..args)
 )
 
-#let meter(qubit, ..args) = construct-single-qubit-gate(qubit, gates.meter.with(..args))
+// Measurement. The measured wire becomes `output-wire` wires 
+// (classical by default) after the meter; pass `none` to leave it as is. 
+#let meter(qubit, output-wire: 2, ..args) = construct-single-qubit-gate(
+  qubit, gates.meter.with(..args), wire-after: output-wire
+)
 
-#let measure(label: none, ..args) = {
+// Measurement, optionally into a classical wire (second qubit). The 
+// measured wire becomes `output-wire` wires (classical by default) after 
+// the meter; pass `none` to leave it as is. 
+#let measure(label: none, output-wire: 2, ..args) = {
   let qubits = args.pos()
   assert(qubits.len() > 0, message: "Missing argument `qubit`")
 
@@ -212,7 +263,7 @@
   }
 
   if qubits.len() == 1 {
-    construct-single-qubit-gate(qubits.first(), gates.meter.with(..args.named()))
+    construct-single-qubit-gate(qubits.first(), gates.meter.with(..args.named()), wire-after: output-wire)
   } else {
     assert(qubits.len() == 2, message: "Expected a qubit and a classical, got more than two positional arguments")
     construct-two-qubit-gate(
@@ -220,9 +271,27 @@
       qubits.first(), 
       gates.ctrl.with(open: true, wire-count: 2, label: label), 
       gates.meter.with(..args.named())
-    )
+    ).flatten().map(info => {
+      // the meter is the supplement 
+      info.wire-changes = wire-change(info.supplements.first().first(), after: output-wire)
+      info
+    })
   }
 }
+
+// Label at the start of a wire (see `quill.lstick`). There is no wire left 
+// of the label (`input-wire`) and `output-wire` wires right of it. 
+#let lstick(qubit, body, n: 1, input-wire: 0, output-wire: 1, ..args) = gate-info(
+  qubit, decorations.lstick.with(body, n: n, ..args), n: n, 
+  wire-changes: wire-change(range(qubit, qubit + n), before: input-wire, after: output-wire)
+)
+
+// Label at the end of a wire (see `quill.rstick`). The wire ends at the 
+// label (`output-wire`). 
+#let rstick(qubit, body, n: 1, output-wire: 0, ..args) = gate-info(
+  qubit, decorations.rstick.with(body, n: n, ..args), n: n, 
+  wire-changes: wire-change(range(qubit, qubit + n), after: output-wire)
+)
 
 
 #let cx(control, target, ..args) = construct-two-qubit-gate(
@@ -301,6 +370,7 @@
   }
 
   let tracks = ((),) * num-qubits
+  let wire-changes = ()
   
   // now we doin some Tetris
   for op in operations {
@@ -333,7 +403,16 @@
 
     // Place gate and supplementary gates. 
     if op.constructor != barrier {
-      tracks.at(start).push((op.constructor)(x: x + tracks.at(start).len(), y: y + start))
+      let col = x + tracks.at(start).len()
+      for change in op.at("wire-changes", default: ()) {
+        if change.before != none {
+          wire-changes.push(decorations.setwire(change.before, x: 0, y: y + change.qubit))
+        }
+        if change.after != none {
+          wire-changes.push(decorations.setwire(change.after, x: col, y: y + change.qubit))
+        }
+      }
+      tracks.at(start).push((op.constructor)(x: col, y: y + start))
       for (qubit, supplement) in op.supplements {
         tracks.at(qubit).push((supplement)(x: x + tracks.at(end).len(), y: y + qubit))
       }
@@ -359,7 +438,7 @@
     size-hint: (it, i) => (width: 0pt, height: 0pt)
   )
 
-  (placeholder,) + tracks.join().filter(x => x != 1) 
+  (placeholder,) + tracks.join().filter(x => x != 1) + wire-changes
 }
 
 
