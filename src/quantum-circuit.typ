@@ -146,6 +146,10 @@
   let prev-col = 0
   let wire-ended = false
 
+  // Wire style changes from `setwire` calls with an explicit `x` or `y`. 
+  // They are merged with the sequential ones when the wires are drawn. 
+  let positioned-wire-changes = ()
+
   // Wire styles and wire pieces per row. 
   let wire-instructions = (
     (default-wire-style, ),
@@ -155,7 +159,7 @@
     wire-instructions = wires.map(count => (default-wire-style + (count: count),))
   }
 
-  for item in items {
+  for (item-index, item) in items.enumerate() {
     if item == [\ ] {
       if fill-wires {
         wire-instructions.at(row).push((prev-col, -1))
@@ -176,7 +180,20 @@
         if "distance" in item { new-style.distance = item.distance }
         if "count" in item { new-style.count = item.count }
         if "stroke" in item { new-style.stroke = item.stroke }
-        wire-instructions.at(row).push(new-style)
+        if item.x == auto and item.y == auto {
+          // A sequential change applies to the wire from the last 
+          // visited column onwards. 
+          wire-instructions.at(row).push(
+            (col: prev-col, index: item-index, style: new-style)
+          )
+        } else {
+          positioned-wire-changes.push((
+            col: if-auto(item.x, prev-col), 
+            row: if-auto(item.y, row), 
+            index: item-index, 
+            style: new-style
+          ))
+        }
       } else {
         // Visual meta instructions are handled later
         let (x, y) = (if-auto(item.x, col), if-auto(item.y, row))
@@ -491,37 +508,58 @@
 
     
     for (row, wire-in) in wire-instructions.enumerate() {
-      let wire-style = wire-in.at(0)
-      for wire-piece in wire-in {
-        if type(wire-piece) == dictionary {
-          if "stroke" in wire-piece {
-            wire-piece.stroke = utility.update-stroke(wire-style.stroke, wire-piece.stroke)
-          }
-          wire-style += wire-piece
-        } else {
-          if wire-style.count == 0 { continue }
-          let (start-x, end-x) = wire-piece
-          if end-x == -1 {
-            end-x = num-cols - 1
-          }
-          if start-x == end-x { continue }
+      // Collect wire pieces and style changes of this row. Each change 
+      // applies to all wire pieces starting at or after its column. 
+      let base-style = wire-in.at(0)
+      let pieces = wire-in.slice(1).filter(x => type(x) == array)
+      let changes = wire-in.slice(1).filter(x => type(x) == dictionary)
+      let positioned = positioned-wire-changes.filter(c => c.row == row)
+      changes = (changes + positioned).sorted(key: c => (c.col, c.index))
+      let breaks = positioned.map(c => c.col)
 
-          let draw-subwire(x1, x2) = {
-            let dx1 = center-x-coords.at(x1)
-            let dx2 = center-x-coords.at(x2, default: circuit-width)
-            let dy = center-y-coords.at(row)
-            dx1 += get-anchor-width(x1, row) / 2
-            dx2 -= get-anchor-width(x2, row) / 2
-            draw-functions.draw-horizontal-wire(dx1, dx2, dy, wire-style.stroke, wire-style.count, wire-distance: wire-style.distance)
+      let style-at(x) = {
+        let wire-style = base-style
+        for change in changes {
+          if change.col > x { break }
+          let new-style = change.style
+          if "stroke" in new-style {
+            new-style.stroke = utility.update-stroke(wire-style.stroke, new-style.stroke)
           }
-          // Draw wire pieces and take care not to draw through gates. 
-          for x in range(start-x + 1, end-x) {
-            let anchor-width = get-anchor-width(x, row)
-            if anchor-width == 0pt { continue } // no gate or `box: false` gate. 
-            draw-subwire(start-x, x)
-            start-x = x
-          }
-          draw-subwire(start-x, end-x)
+          wire-style += new-style
+        }
+        wire-style
+      }
+
+      let draw-piece(start-x, end-x) = {
+        let wire-style = style-at(start-x)
+        if wire-style.count == 0 { return }
+        let draw-subwire(x1, x2) = {
+          let dx1 = center-x-coords.at(x1)
+          let dx2 = center-x-coords.at(x2, default: circuit-width)
+          let dy = center-y-coords.at(row)
+          dx1 += get-anchor-width(x1, row) / 2
+          dx2 -= get-anchor-width(x2, row) / 2
+          draw-functions.draw-horizontal-wire(dx1, dx2, dy, wire-style.stroke, wire-style.count, wire-distance: wire-style.distance)
+        }
+        // Draw wire pieces and take care not to draw through gates. 
+        for x in range(start-x + 1, end-x) {
+          let anchor-width = get-anchor-width(x, row)
+          if anchor-width == 0pt { continue } // no gate or `box: false` gate. 
+          draw-subwire(start-x, x)
+          start-x = x
+        }
+        draw-subwire(start-x, end-x)
+      }
+
+      for (start-x, end-x) in pieces {
+        if end-x == -1 {
+          end-x = num-cols - 1
+        }
+        if start-x >= end-x { continue }
+        // Split the piece where positioned wire changes take effect. 
+        let cuts = breaks.filter(b => start-x < b and b < end-x).dedup().sorted()
+        for (x1, x2) in ((start-x,) + cuts).zip(cuts + (end-x,)) {
+          draw-piece(x1, x2)
         }
       }
     }

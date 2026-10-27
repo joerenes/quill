@@ -202,6 +202,20 @@
 /// are possible) and optionally the stroke style. 
 ///
 /// The wire style is reset for each row.
+/// 
+/// When `x` and/or `y` are given, the change is not applied at the current 
+/// position in the item sequence but at column `x` of row `y` (missing 
+/// coordinates default to the current position). It then affects the wire 
+/// from the centre of that column onwards. This makes it possible to change 
+/// wires in circuits made of absolutely placed gates, for example circuits 
+/// built with `tequila`. 
+/// ```example
+/// #quantum-circuit(
+///   meter(x: 2, y: 0), setwire(2, x: 2, y: 0),
+///   gate($X$, x: 1, y: 1), setwire(0, x: 2, y: 1), 
+///   4
+/// )
+/// ```
 #let setwire(
 
   /// Number of wires to display. 
@@ -216,11 +230,11 @@
   /// -> length
   wire-distance: auto,
 
-  /// The starting column of the wire change command. 
+  /// The column from whose centre on the wire change applies. 
   /// -> auto | int
   x: auto, 
 
-  /// The starting wire of the wire change command. 
+  /// The row (wire) the wire change applies to. 
   /// -> auto | int
   y: auto
 
