@@ -183,6 +183,22 @@
 }
 
 
+// Ground symbol: three vertical bars of decreasing height. The wire ends at 
+// the centre of the cell, so the first (largest) bar is put there. 
+#let draw-ground(gate, draw-params) = {
+  let size = gate.data.size
+  let spacing = gate.data.spacing
+  let stroke = utility.update-stroke(draw-params.wire, gate.stroke)
+  let bars = stack(
+    dir: ltr, 
+    spacing: spacing,
+    ..(1, .65, .3).map(f => align(horizon, line(angle: 90deg, length: f * size, stroke: stroke)))
+  )
+  // Vertical lines have zero layout width: the bars sit at 0, spacing and 
+  // 2 spacing. Padding the left by the same width centres the first bar. 
+  box(inset: (left: 2 * spacing), bars)
+}
+
 #let draw-nwire(gate, draw-params) = {
   set text(size: .7em)
   let size = measure(gate.content)

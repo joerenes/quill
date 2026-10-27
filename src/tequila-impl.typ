@@ -245,6 +245,11 @@
   qubit, gates.gate.with($U (#theta, #phi, #lambda)$, ..args)
 )
 
+// Ground (discard). The wire ends at the symbol. 
+#let ground(qubit, ..args) = construct-single-qubit-gate(
+  qubit, gates.ground.with(..args), wire-after: 0
+)
+
 // Measurement. The measured wire becomes `output-wire` wires 
 // (classical by default) after the meter; pass `none` to leave it as is. 
 #let meter(qubit, output-wire: 2, ..args) = construct-single-qubit-gate(

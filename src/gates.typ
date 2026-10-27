@@ -470,6 +470,49 @@
 
 
 
+/// Ground symbol for discarding a qubit. The incoming wire ends at the 
+/// first (largest) bar. To remove the wire after the symbol, follow it 
+/// with `setwire(0)` (`tequila.ground` does this automatically). 
+/// 
+/// ```example
+/// #quantum-circuit(
+///   lstick($|0〉$), $H$, ground(), setwire(0), 1, [\ ],
+///   2, 1
+/// )
+/// ```
+#let ground(
+
+  /// Height of the largest bar. 
+  /// -> length
+  size: 10pt, 
+
+  /// Horizontal distance between the bars. 
+  /// -> length
+  spacing: 1.6pt,
+
+  /// Stroke of the bars; defaults to the wire stroke. 
+  /// -> auto | stroke
+  stroke: auto,
+
+  /// One or more labels to add to the gate. See @gate.label. 
+  /// -> none | array | str | content | dictionary
+  label: none,
+
+  x: auto,
+
+  y: auto,
+
+) = gate(
+  none, 
+  x: x, y: y, 
+  box: false, 
+  fill: none,
+  stroke: stroke,
+  label: label,
+  draw-function: draw-functions.draw-ground,
+  data: (size: size, spacing: spacing),
+)
+
 /// Target element for controlled-$X$ operations. 
 /// 
 /// ```example
